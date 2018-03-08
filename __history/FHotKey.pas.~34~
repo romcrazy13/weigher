@@ -1,0 +1,47 @@
+unit FHotKey;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ComCtrls, StdCtrls, INIFiles;
+
+type
+  TFormHotKey = class(TForm)
+    ButtonOk: TButton;
+    ButtonCancel: TButton;
+    GroupBox1: TGroupBox;
+    EditCaption: TEdit;
+    GroupBox2: TGroupBox;
+    EditHotKey: THotKey;
+    procedure ButtonOkClick(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  FormHotKey: TFormHotKey;
+
+implementation
+
+uses FMain;
+
+{$R *.dfm}
+
+procedure TFormHotKey.ButtonOkClick(Sender: TObject);
+var
+  iniFile: TINIFile;
+  iniFileName: string;
+begin
+  iniFileName := ChangeFileExt(ExtractFilePath(Application.ExeName)
+      + ExtractFileName(Application.ExeName), '') + '.ini';
+  iniFile := TINIFile.Create(iniFileName);
+  iniFile.WriteInteger('weight', 'hotkey', EditHotKey.HotKey);
+  iniFile.Free;
+  FormMain.weightHotKey := EditHotKey.HotKey;
+  FormHotKey.Close;
+end;
+
+end.

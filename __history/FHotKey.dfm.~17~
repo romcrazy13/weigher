@@ -1,0 +1,69 @@
+object FormHotKey: TFormHotKey
+  Left = 0
+  Top = 0
+  Caption = 'Hot Key'
+  ClientHeight = 278
+  ClientWidth = 532
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  PixelsPerInch = 96
+  TextHeight = 13
+  object ButtonOk: TButton
+    Left = 11
+    Top = 181
+    Width = 100
+    Height = 25
+    Caption = 'Ok'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Tahoma'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 0
+    OnClick = ButtonOkClick
+  end
+  object ButtonCancel: TButton
+    Left = 117
+    Top = 181
+    Width = 100
+    Height = 25
+    Caption = 'Cancel'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Tahoma'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 1
+  end
+  object EditHotKey: THotKey
+    Left = 11
+    Top = 156
+    Width = 121
+    Height = 19
+    HotKey = 32833
+    TabOrder = 2
+  end
+  object GroupBox1: TGroupBox
+    Left = 8
+    Top = 8
+    Width = 448
+    Height = 105
+    Caption = 'GroupBox1'
+    TabOrder = 3
+    object EditCaption: TEdit
+      Left = 10
+      Top = 20
+      Width = 431
+      Height = 20
+      AutoSize = False
+      TabOrder = 0
+    end
+  end
+end

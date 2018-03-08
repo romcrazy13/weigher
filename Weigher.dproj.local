@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2018.01.22 17:49:11.364.pas,C:\Users\Роман\Documents\RAD Studio\Projects\Unit1.pas=C:\work_rom\projects\delphi\Weigher\FMain.pas</Transaction>
+    <Transaction>2018.01.22 17:49:11.364.dfm,C:\Users\Роман\Documents\RAD Studio\Projects\Unit1.dfm=C:\work_rom\projects\delphi\Weigher\FMain.dfm</Transaction>
+    <Transaction>2018.01.22 17:49:20.939.dproj,C:\Users\Роман\Documents\RAD Studio\Projects\Project1.dproj=C:\work_rom\projects\delphi\Weigher\Weigher.dproj</Transaction>
+    <Transaction>2018.01.22 18:14:53.071.pas,C:\work_rom\projects\delphi\UsbHidDevice\arh\FormMain.pas=</Transaction>
+    <Transaction>2018.01.22 18:14:53.071.dfm,C:\work_rom\projects\delphi\UsbHidDevice\arh\FormMain.dfm=</Transaction>
+    <Transaction>2018.02.13 17:08:24.655.pas,C:\work_rom\projects\delphi\Weigher\Unit1.pas=C:\work_rom\projects\delphi\Weigher\HotKey.pas</Transaction>
+    <Transaction>2018.02.13 17:08:24.655.dfm,C:\work_rom\projects\delphi\Weigher\Unit1.dfm=C:\work_rom\projects\delphi\Weigher\HotKey.dfm</Transaction>
+    <Transaction>2018.02.13 17:19:49.358.pas,C:\work_rom\projects\delphi\Weigher\HotKey.pas=C:\work_rom\projects\delphi\Weigher\FHotKey.pas</Transaction>
+    <Transaction>2018.02.13 17:19:49.358.dfm,C:\work_rom\projects\delphi\Weigher\HotKey.dfm=C:\work_rom\projects\delphi\Weigher\FHotKey.dfm</Transaction>
+    <Transaction>2018.02.13 23:42:29.844.pas,C:\work_rom\projects\delphi\Weigher\FHotKey.pas=C:\work_rom\projects\delphi\Weigher\FSettings.pas</Transaction>
+    <Transaction>2018.02.13 23:42:29.878.dfm,C:\work_rom\projects\delphi\Weigher\FHotKey.dfm=C:\work_rom\projects\delphi\Weigher\FSettings.dfm</Transaction>
+    <Transaction>2018.02.14 01:01:52.222.pas,C:\work_rom\projects\delphi\Weigher\Unit1.pas=C:\work_rom\projects\delphi\Weigher\Utils.pas</Transaction>
+    <Transaction>2018.02.14 01:05:34.380.pas,C:\work_rom\projects\delphi\Weigher\Utils.pas=</Transaction>
+  </Transactions>
+</BorlandProject>

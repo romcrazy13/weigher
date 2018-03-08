@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2018.01.22 17:49:11.364.pas,C:\Users\Роман\Documents\RAD Studio\Projects\Unit1.pas=C:\work_rom\projects\delphi\Weigher\FMain.pas</Transaction>
+    <Transaction>2018.01.22 17:49:11.364.dfm,C:\Users\Роман\Documents\RAD Studio\Projects\Unit1.dfm=C:\work_rom\projects\delphi\Weigher\FMain.dfm</Transaction>
+    <Transaction>2018.01.22 17:49:20.939.dproj,C:\Users\Роман\Documents\RAD Studio\Projects\Project1.dproj=C:\work_rom\projects\delphi\Weigher\Weigher.dproj</Transaction>
+    <Transaction>2018.01.22 18:14:53.071.pas,C:\work_rom\projects\delphi\UsbHidDevice\arh\FormMain.pas=</Transaction>
+    <Transaction>2018.01.22 18:14:53.071.dfm,C:\work_rom\projects\delphi\UsbHidDevice\arh\FormMain.dfm=</Transaction>
+  </Transactions>
+</BorlandProject>

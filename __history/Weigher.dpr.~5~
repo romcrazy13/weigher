@@ -1,0 +1,15 @@
+program Weigher;
+
+uses
+  Forms,
+  FMain in 'FMain.pas' {FormMain};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.Title := 'Weigher';
+  Application.CreateForm(TFormMain, FormMain);
+  Application.Run;
+end.

@@ -1,0 +1,25 @@
+unit HotKey;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ComCtrls;
+
+type
+  TFormHotKey = class(TForm)
+    HotKey1: THotKey;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  FormHotKey: TFormHotKey;
+
+implementation
+
+{$R *.dfm}
+
+end.

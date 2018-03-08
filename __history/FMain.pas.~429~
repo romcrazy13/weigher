@@ -1,0 +1,384 @@
+unit FMain;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, JvComponentBase, JvHidControllerClass,
+  IdTCPClient, IdHTTP, IdIOHandler, IdIOHandlerSocket, IdIOHandlerStack,
+  INIFiles, IdSSL, IdSSLOpenSSL, IdBaseComponent, IdComponent, IdTCPConnection,
+  OleCtrls, SHDocVw, ComCtrls, mshtml;
+
+type
+  TINIData = record
+    FileName: string;
+    CheckTitle: boolean;
+    Title: string;
+    HotKey: integer;
+  end;
+  TFormMain = class(TForm)
+    DevListBox: TListBox;
+    LabelDevices: TLabel;
+    LabelLogs: TLabel;
+    Timer: TTimer;
+    HidCtl: TJvHidDeviceController;
+    ButtonInfo: TButton;
+    ButtonWeigher: TButton;
+    ButtonSaveLog: TButton;
+    SaveDialog: TSaveDialog;
+    HistoryListBox: TListBox;
+    ButtonSettings: TButton;
+    procedure HidCtlDeviceChange(Sender: TObject);
+    function HidCtlEnumerate(HidDev: TJvHidDevice; const Idx: Integer): Boolean;
+    procedure DevListBoxClick(Sender: TObject);
+    procedure ShowRead(HidDev: TJvHidDevice; ReportID: Byte; const Data: Pointer; Size: Word);
+    procedure HidCtlDeviceDataError(HidDev: TJvHidDevice; Error: Cardinal);
+    procedure ButtonInfoClick(Sender: TObject);
+    procedure ButtonSaveLogClick(Sender: TObject);
+    procedure TimerTimer(Sender: TObject);
+    procedure ButtonWeigherClick(Sender: TObject);
+    procedure setWeightValue(b0: Byte; Weight: currency);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure ButtonSettingsClick(Sender: TObject);
+    procedure ShortCutToModifiersKey(ShortCut: TShortCut;
+      var Modifiers: Cardinal; var Key: Cardinal);
+    procedure HotKeyRegister();
+  private
+    function getWindowHWND(): HWND;
+    procedure WMHotKey(var Msg: TWMHotKey); message WM_HOTKEY;
+    procedure setWeight(sWeight: string);
+  public
+    CurrentDevice: TJvHidDevice;
+    Execute: Boolean;
+    Sent: Boolean;
+    SentWeight: currency;
+    SentDate: TDateTime;
+
+    weightHotKey: Integer;
+
+    CurrentWeight: currency;
+
+    CurrentWindow: HWND;
+
+    Host: string;
+  end;
+
+const
+  STATUS_ZIRO = 2;
+  STATUS_UNCOR = 3;
+  STATUS_SUCCESS = 4;
+  DATE_MAX_AGE = 600; // Максимальное время хранения веса в секундах
+
+var
+  FormMain: TFormMain;
+  ini: TINIData;
+
+implementation
+
+uses
+  FInfo, FWeigher, FSettings;
+{$R *.dfm}
+
+procedure TFormMain.ButtonSettingsClick(Sender: TObject);
+begin
+  FormSettings.ShowModal;
+end;
+
+procedure TFormMain.ButtonInfoClick(Sender: TObject);
+begin
+  if (DevListBox.Items.Count > 0) and (DevListBox.ItemIndex >= 0) then
+    with TFormInfo.Create(self) do
+    begin
+      Dev := TJvHidDevice(DevListBox.Items.Objects[DevListBox.ItemIndex]);
+      ShowModal;
+      Free;
+    end;
+end;
+
+procedure TFormMain.ButtonSaveLogClick(Sender: TObject);
+begin
+  ForceCurrentDirectory := True;
+  SaveDialog.InitialDir := ExtractFilePath(Application.ExeName);
+  if SaveDialog.Execute then
+    HistoryListBox.Items.SaveToFile(SaveDialog.FileName);
+end;
+
+procedure TFormMain.ButtonWeigherClick(Sender: TObject);
+begin
+  FormWeigher.show;
+  FormMain.Hide;
+end;
+
+procedure TFormMain.DevListBoxClick(Sender: TObject);
+begin
+  HistoryListBox.Clear;
+  CurrentDevice := nil;
+  if (DevListBox.Items.Count > 0) and (DevListBox.ItemIndex >= 0) then
+  begin
+    CurrentDevice := TJvHidDevice
+      (DevListBox.Items.Objects[DevListBox.ItemIndex]);
+    ButtonWeigher.Enabled := false;
+    HistoryListBox.Items.Add(DevListBox.Items[DevListBox.ItemIndex]);
+    HistoryListBox.Items.Add('Serial number: ' + CurrentDevice.SerialNumber);
+  end;
+end;
+
+procedure TFormMain.FormCreate(Sender: TObject);
+var
+  iniFile: TINIFile;
+begin
+  ini.FileName := ChangeFileExt(ExtractFilePath(Application.ExeName)
+      + ExtractFileName(Application.ExeName), '') + '.ini';
+  iniFile := TINIFile.Create(ini.FileName);
+
+  ini.CheckTitle := iniFile.ReadBool('application', 'checkTitle', false);
+  ini.Title := UpperCase(trim(iniFile.ReadString('application', 'title', '')));
+  ini.HotKey := iniFile.ReadInteger('weight', 'hotkey', 0);
+
+  iniFile.Free;
+  HotKeyRegister;
+end;
+
+procedure TFormMain.FormDestroy(Sender: TObject);
+begin
+  UnRegisterHotKey(Handle, weightHotKey);
+end;
+
+procedure TFormMain.FormShow(Sender: TObject);
+begin
+  self.DevListBoxClick(self);
+end;
+
+procedure TFormMain.HidCtlDeviceChange(Sender: TObject);
+var
+  Dev: TJvHidDevice;
+  I: Integer;
+begin
+  if Assigned(DevListBox) then begin
+    for I := 0 to DevListBox.Items.Count - 1 do begin
+      Dev := TJvHidDevice(DevListBox.Items.Objects[I]);
+      Dev.Free;
+    end;
+    DevListBox.Clear;
+    HistoryListBox.Clear;
+    HidCtl.Enumerate;
+    if DevListBox.Items.Count > 0 then begin
+      DevListBox.ItemIndex := 0;
+      DevListBoxClick(self);
+    end;
+  end;
+end;
+
+procedure TFormMain.HidCtlDeviceDataError(HidDev: TJvHidDevice;
+  Error: Cardinal);
+begin
+  HistoryListBox.ItemIndex := HistoryListBox.Items.Add
+    ('READ ERROR: ' + SysErrorMessage(Error));
+end;
+
+procedure TFormMain.ShowRead(HidDev: TJvHidDevice; ReportID: Byte;
+  const Data: Pointer; Size: Word);
+var
+  I: Integer;
+  Str: string;
+  Pid, Vid: string;
+  iB: array of Integer;
+  Weight: currency;
+begin
+  Vid := Format('%.4x', [CurrentDevice.Attributes.VendorID]);
+  Pid := Format('%.4x', [CurrentDevice.Attributes.ProductID]);
+
+  if Execute and
+    (HidDev.Attributes.VendorID = CurrentDevice.Attributes.VendorID)
+    and (HidDev.Attributes.ProductID = CurrentDevice.Attributes.ProductID)
+    then
+  begin
+    Execute := false;
+    SetLength(iB, Size);
+    for I := 0 to Size - 1 do
+    begin
+      iB[I] := Cardinal(PAnsiChar(Data)[I]);
+    end;
+    Weight := (iB[4] * 256 + iB[3]) / 100;
+    // Weight := (iB[4] * 256 + iB[3]) / (10 * (256 - iB[2]));
+
+    HistoryListBox.Items.Add('');
+    Str := DateToStr(now) + '   ' + TimeToStr(now);
+    HistoryListBox.Items.Add(Str);
+
+    Str := '   ' + Format(
+      'RepId=%3d   b0=%.3d b1=%.3d b2=%.3d b3=%.3d b4=%.3d b5=%.3d',
+      [ReportID, iB[0], iB[1], iB[2], iB[3], iB[4], iB[5]]) + '   ';
+    Str := Str + 'Weight=' + FormatFloat('0.000', Weight);
+    HistoryListBox.Items.Add(Str);
+    ButtonWeigher.Enabled := HistoryListBox.Items.Count > 1;
+    setWeightValue(iB[0], Weight);
+//    if (iB[0] = STATUS_SUCCESS) then begin
+      CurrentWeight := Weight;
+//    end;
+  end;
+end;
+
+procedure TFormMain.TimerTimer(Sender: TObject);
+begin
+  Execute := True;
+end;
+
+function TFormMain.HidCtlEnumerate(HidDev: TJvHidDevice;
+  const Idx: Integer): Boolean;
+var
+  N: Integer;
+  Dev: TJvHidDevice;
+begin
+  if Assigned(DevListBox) then
+  begin
+    if HidDev.ProductName <> '' then
+      N := DevListBox.Items.Add(Format('Device VID=%.4x   PID=%.4x',
+          [HidDev.Attributes.VendorID, HidDev.Attributes.ProductID])
+          + '   ' + HidDev.ProductName)
+    else
+      N := DevListBox.Items.Add(Format('Device VID=%.4x PID=%.4x',
+          [HidDev.Attributes.VendorID, HidDev.Attributes.ProductID]));
+    HidCtl.CheckOutByIndex(Dev, Idx);
+    DevListBox.Items.Objects[N] := Dev;
+  end;
+  Result := True;
+end;
+
+procedure TFormMain.setWeightValue(b0: Byte; Weight: currency);
+begin
+  if FormWeigher.Visible then
+    with FormWeigher do begin
+      FormWeigher.BringToFront;
+      LabelWeigher.Caption := FormatFloat('0.000', Weight);
+      case b0 of
+        // If "Zero"
+        STATUS_ZIRO:
+          LabelWeigher.Font.Color := clWindowText;
+        // If possible incorrect weight
+        STATUS_UNCOR:
+          LabelWeigher.Font.Color := clRed;
+        // If so Good
+        STATUS_SUCCESS:
+          LabelWeigher.Font.Color := clGreen;
+        // If else
+        else
+          LabelWeigher.Font.Color := clWindowText;
+      end;
+    end;
+end;
+
+function TFormMain.getWindowHWND(): HWND;
+var
+  Wnd: HWND;
+  buff: array [0 .. 127] of char;
+  tmpTitle: string;
+begin
+  Result := 0;
+  Wnd := GetWindow(handle, gw_hwndfirst);
+  while Wnd <> 0 do begin
+    if (Wnd <> Application.handle)
+      and IsWindowVisible(Wnd) // Невидимые окна
+      and (GetWindow(Wnd, gw_owner) = 0) // Дочерние окна
+      and (GetWindowText(Wnd, buff, SizeOf(buff)) <> 0) then
+    begin
+      GetWindowText(Wnd, buff, SizeOf(buff));
+      tmpTitle := StrPas(buff);
+      if pos(ini.Title, UpperCase(tmpTitle)) <> 0 then
+      begin
+        Result := Wnd;
+        break;
+      end;
+    end;
+    Wnd := GetWindow(Wnd, gw_hwndnext);
+  end;
+end;
+
+procedure TFormMain.HotKeyRegister();
+const
+   MOD_ALT = 1;
+   MOD_CONTROL = 2;
+   MOD_SHIFT = 4;
+   MOD_WIN = 8;
+   VK_A = 65;
+   VK_W = 87;
+var
+  Modifiers: Cardinal;
+  Key: Cardinal;
+begin
+  // if not exsists HotKey value on iniFile - set default value
+  // Register HotKey Ctrl + W
+  if ini.HotKey = 0 then ini.HotKey := 16471;
+
+  UnRegisterHotKey(Handle, weightHotKey);
+  weightHotKey := GlobalAddAtom('weightHotKey');
+  ShortCutToModifiersKey(ini.HotKey, Modifiers, Key);
+  RegisterHotKey(Handle, weightHotKey, Modifiers, Key);
+end;
+
+procedure TFormMain.WMHotKey(var Msg: TWMHotKey);
+begin
+  if Msg.HotKey = weightHotKey then
+    if CurrentWeight <> 0 then begin
+      if ini.CheckTitle and (CurrentWindow = 0) then CurrentWindow := getWindowHWND;
+
+      if (ini.CheckTitle
+            and (CurrentWindow <> 0)
+            and (GetForegroundWindow = CurrentWindow)
+            or not ini.CheckTitle) then begin
+        setWeight(FormatFloat('0.000', CurrentWeight));
+      end;
+    end;
+end;
+
+procedure TFormMain.setWeight(sWeight: string);
+var
+  i: integer;
+  symb: byte;
+begin
+  sleep(1000);
+
+  keybd_event(VK_HOME, 0, 0, 0); //Нажатие
+  keybd_event(VK_HOME, 0, KEYEVENTF_KEYUP, 0); //Отпускание
+
+  keybd_event(VK_RSHIFT, 0, 0, 0); //Нажатие
+  keybd_event(VK_END, 0, 0, 0); //Нажатие
+  keybd_event(VK_END, 0, KEYEVENTF_KEYUP, 0); //Отпускание
+  keybd_event(VK_RSHIFT, 0, KEYEVENTF_KEYUP, 0); //Отпускание
+
+//  keybd_event(VK_DELETE, 0, 0, 0); //Нажатие
+//  keybd_event(VK_DELETE, 0, KEYEVENTF_KEYUP, 0); //Отпускание
+//
+//  for i := 1 to Length(sWeight) do begin
+//    case sWeight[i] of
+//      '0' : symb := VK_NUMPAD0;
+//      '1' : symb := VK_NUMPAD1;
+//      '2' : symb := VK_NUMPAD2;
+//      '3' : symb := VK_NUMPAD3;
+//      '4' : symb := VK_NUMPAD4;
+//      '5' : symb := VK_NUMPAD5;
+//      '6' : symb := VK_NUMPAD6;
+//      '7' : symb := VK_NUMPAD7;
+//      '8' : symb := VK_NUMPAD8;
+//      '9' : symb := VK_NUMPAD9;
+//      '.', ',' : symb := VK_DECIMAL;
+//      else symb := VK_LSHIFT;
+//    end;
+//    keybd_event(symb, 0, 0, 0); //Нажатие
+//    keybd_event(symb, 0, KEYEVENTF_KEYUP, 0); //Отпускание
+//  end;
+end;
+
+procedure TFormMain.ShortCutToModifiersKey(ShortCut: TShortCut;
+  var Modifiers: Cardinal; var Key: Cardinal);
+begin
+  Key := ShortCut and not (scShift + scCtrl + scAlt);
+  Modifiers := 0;
+  if ShortCut and scShift <> 0 then Modifiers := Modifiers or MOD_SHIFT;
+  if ShortCut and scCtrl <> 0 then Modifiers := Modifiers or MOD_CONTROL;
+  if ShortCut and scAlt <> 0 then Modifiers := Modifiers or MOD_ALT;
+end;
+
+end.
